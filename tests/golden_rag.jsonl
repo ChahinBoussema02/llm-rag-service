@@ -1,0 +1,3 @@
+{"id":"refund_window_pro","question":"How long is the refund window for Pro?","must_cite":["refund-policy::c0000"],"must_contain":["14"],"top_k":5}
+{"id":"refund_request_how","question":"How do I request a refund?","must_cite":["refund-policy::c0003"],"must_contain":["Refund Request"],"top_k":5}
+{"id":"unknown_question","question":"Do you offer student discounts?","must_say_idk":true,"top_k":5}

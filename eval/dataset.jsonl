@@ -1,0 +1,6 @@
+{"id":"q1","question":"Is the Free plan refundable?","top_k":5,"must_cite":["refund-policy::c0001"],"must_contain":["non-refundable"]}
+{"id":"q2","question":"How long do Pro users have to request a refund?","top_k":5,"must_cite":["refund-policy::c0000"],"must_contain":["14"]}
+{"id":"q3","question":"What happens after 3 days past due?","top_k":5,"must_cite":["billing-and-plans::c0004"],"must_contain":["3 days"]}
+{"id":"q4","question":"Do downgrades take effect immediately?","top_k":5,"must_cite":["billing-and-plans::c0005"],"must_contain":["next billing cycle"]}
+{"id":"q8","question":"How long is data retained on the Pro plan?","top_k":5,"must_cite":["privacy-policy-summary::c0001"],"must_contain":["30"]}
+{"id":"q9","question":"Do you offer student discounts?","top_k":5,"must_say_idk":true, "max_citations":0}

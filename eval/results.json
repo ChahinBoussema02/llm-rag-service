@@ -1,0 +1,225 @@
+{
+  "metrics": {
+    "n": 6,
+    "answer_rate": 1.0,
+    "idk_rate": 0.16666666666666666,
+    "citation_rate": 0.8333333333333334,
+    "must_cite_hit_rate": 0.8,
+    "contain_hit_rate": 1.0
+  },
+  "results": [
+    {
+      "id": "q1",
+      "question": "Is the Free plan refundable?",
+      "ok": true,
+      "answer": "Free plan is non-refundable.",
+      "citations": [
+        {
+          "chunk_id": "refund-policy::c0001",
+          "doc_id": "refund-policy",
+          "section_path": "Refund Policy (AcmeAI) > Non-Refundable",
+          "score": 0.6382572487886888,
+          "snippet": "- Free plan is non-refundable.\n- Add-on seats purchased mid-cycle are non-refundable.\n- Usage-based overages (if enabled) are non-refundable."
+        },
+        {
+          "chunk_id": "billing-and-plans::c0004",
+          "doc_id": "billing-and-plans",
+          "section_path": "Billing & Plans (AcmeAI) > Payment Failures",
+          "score": 0.5192698572355905,
+          "snippet": "- If payment fails, the account enters \"past due\" immediately.\n- After 3 days past due, access is limited to Free plan features.\n- After 14 days past due, the subscription is canceled."
+        }
+      ],
+      "checks": {
+        "must_cite": {
+          "required": [
+            "refund-policy::c0001"
+          ],
+          "hit": true,
+          "got": [
+            "billing-and-plans::c0004",
+            "refund-policy::c0001"
+          ]
+        },
+        "must_contain": {
+          "required": [
+            "non-refundable"
+          ],
+          "hit": true
+        }
+      }
+    },
+    {
+      "id": "q2",
+      "question": "How long do Pro users have to request a refund?",
+      "ok": true,
+      "answer": "Pro and Team plans are eligible for refunds within 14 days of the initial purchase.",
+      "citations": [
+        {
+          "chunk_id": "refund-policy::c0000",
+          "doc_id": "refund-policy",
+          "section_path": "Refund Policy (AcmeAI) > Eligibility",
+          "score": 0.648015753953552,
+          "snippet": "- Pro and Team plans are eligible for refunds within 14 days of the initial purchase.\n- Refunds apply only to first-time subscriptions (first purchase on an account)."
+        },
+        {
+          "chunk_id": "refund-policy::c0002",
+          "doc_id": "refund-policy",
+          "section_path": "Refund Policy (AcmeAI) > Exceptions",
+          "score": 0.5681352012302744,
+          "snippet": "- If the service is unavailable due to a confirmed incident lasting more than 24 hours, partial refunds may be issued at AcmeAI's discretion.\n- Refund requests may be denied if there is evidence of abuse (see Fair Use po"
+        }
+      ],
+      "checks": {
+        "must_cite": {
+          "required": [
+            "refund-policy::c0000"
+          ],
+          "hit": true,
+          "got": [
+            "refund-policy::c0000",
+            "refund-policy::c0002"
+          ]
+        },
+        "must_contain": {
+          "required": [
+            "14"
+          ],
+          "hit": true
+        }
+      }
+    },
+    {
+      "id": "q3",
+      "question": "What happens after 3 days past due?",
+      "ok": true,
+      "answer": "After 3 days past due, access is limited to Free plan features.",
+      "citations": [
+        {
+          "chunk_id": "billing-and-plans::c0004",
+          "doc_id": "billing-and-plans",
+          "section_path": "Billing & Plans (AcmeAI) > Payment Failures",
+          "score": 0.5284726778701726,
+          "snippet": "- If payment fails, the account enters \"past due\" immediately.\n- After 3 days past due, access is limited to Free plan features.\n- After 14 days past due, the subscription is canceled."
+        },
+        {
+          "chunk_id": "refund-policy::c0002",
+          "doc_id": "refund-policy",
+          "section_path": "Refund Policy (AcmeAI) > Exceptions",
+          "score": 0.43870811185095465,
+          "snippet": "- If the service is unavailable due to a confirmed incident lasting more than 24 hours, partial refunds may be issued at AcmeAI's discretion.\n- Refund requests may be denied if there is evidence of abuse (see Fair Use po"
+        }
+      ],
+      "checks": {
+        "must_cite": {
+          "required": [
+            "billing-and-plans::c0004"
+          ],
+          "hit": true,
+          "got": [
+            "billing-and-plans::c0004",
+            "refund-policy::c0002"
+          ]
+        },
+        "must_contain": {
+          "required": [
+            "3 days"
+          ],
+          "hit": true
+        }
+      }
+    },
+    {
+      "id": "q4",
+      "question": "Do downgrades take effect immediately?",
+      "ok": true,
+      "answer": "Downgrades take effect at the next billing cycle renewal date.",
+      "citations": [
+        {
+          "chunk_id": "billing-and-plans::c0005",
+          "doc_id": "billing-and-plans",
+          "section_path": "Billing & Plans (AcmeAI) > Plan Changes",
+          "score": 0.6167501402622557,
+          "snippet": "- Upgrades take effect immediately; the plan price is prorated for the remaining billing cycle.\n- Downgrades take effect at the next billing cycle renewal date."
+        },
+        {
+          "chunk_id": "billing-and-plans::c0004",
+          "doc_id": "billing-and-plans",
+          "section_path": "Billing & Plans (AcmeAI) > Payment Failures",
+          "score": 0.3826414872636329,
+          "snippet": "- If payment fails, the account enters \"past due\" immediately.\n- After 3 days past due, access is limited to Free plan features.\n- After 14 days past due, the subscription is canceled."
+        }
+      ],
+      "checks": {
+        "must_cite": {
+          "required": [
+            "billing-and-plans::c0005"
+          ],
+          "hit": true,
+          "got": [
+            "billing-and-plans::c0004",
+            "billing-and-plans::c0005"
+          ]
+        },
+        "must_contain": {
+          "required": [
+            "next billing cycle"
+          ],
+          "hit": true
+        }
+      }
+    },
+    {
+      "id": "q8",
+      "question": "How long is data retained on the Pro plan?",
+      "ok": true,
+      "answer": "Data is retained for 30 days on the Pro plan.",
+      "citations": [
+        {
+          "chunk_id": "refund-policy::c0000",
+          "doc_id": "refund-policy",
+          "section_path": "Refund Policy (AcmeAI) > Eligibility",
+          "score": 0.4928709284103397,
+          "snippet": "- Pro and Team plans are eligible for refunds within 14 days of the initial purchase.\n- Refunds apply only to first-time subscriptions (first purchase on an account)."
+        },
+        {
+          "chunk_id": "billing-and-plans::c0004",
+          "doc_id": "billing-and-plans",
+          "section_path": "Billing & Plans (AcmeAI) > Payment Failures",
+          "score": 0.4758310869887555,
+          "snippet": "- If payment fails, the account enters \"past due\" immediately.\n- After 3 days past due, access is limited to Free plan features.\n- After 14 days past due, the subscription is canceled."
+        }
+      ],
+      "checks": {
+        "must_cite": {
+          "required": [
+            "privacy-policy-summary::c0001"
+          ],
+          "hit": false,
+          "got": [
+            "billing-and-plans::c0004",
+            "refund-policy::c0000"
+          ]
+        },
+        "must_contain": {
+          "required": [
+            "30"
+          ],
+          "hit": true
+        }
+      }
+    },
+    {
+      "id": "q9",
+      "question": "Do you offer student discounts?",
+      "ok": true,
+      "answer": "I don't know based on the provided documents.",
+      "citations": [],
+      "checks": {
+        "must_say_idk": {
+          "required": true,
+          "hit": true
+        }
+      }
+    }
+  ]
+}
