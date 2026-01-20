@@ -88,10 +88,25 @@ CONTEXT CHUNKS:
 
         return {"final_answer": final_answer, "used_chunk_ids": used}
 
-    except Exception as e:
-        # Safe fallback so your API never crashes
+    except httpx.HTTPStatusError as e:
+        status = e.response.status_code if e.response is not None else "?"
+        body = (e.response.text if e.response is not None else "")[:400]
         return {
             "final_answer": "I don't know based on the provided documents.",
             "used_chunk_ids": [],
-            "warning": f"generation_failed: {e.__class__.__name__}",
+            "warning": f"generation_failed: HTTP {status} body={body}",
+        }
+
+    except httpx.TimeoutException:
+        return {
+            "final_answer": "I don't know based on the provided documents.",
+            "used_chunk_ids": [],
+            "warning": "generation_failed: timeout",
+        }
+
+    except Exception as e:
+        return {
+            "final_answer": "I don't know based on the provided documents.",
+            "used_chunk_ids": [],
+            "warning": f"generation_failed: {type(e).__name__}: {e}",
         }

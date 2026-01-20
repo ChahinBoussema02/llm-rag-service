@@ -279,6 +279,19 @@ This service includes several simple but effective safety techniques:
 
 ---
 
+## 🐳 Docker
+
+If you add Docker support, the intended flow is:
+
+```bash
+docker compose up --build
+```
+The API will run on:
+- http://127.0.0.1:8000
+And Ollama will run on:
+- http://127.0.0.1:11434
+---
+
 ## ⚠️ Known Limitations
 
 This is a portfolio prototype, not a full production system:

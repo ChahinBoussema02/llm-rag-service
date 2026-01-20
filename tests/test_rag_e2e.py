@@ -14,3 +14,5 @@ def test_rag_refund_window_e2e():
 
     cited_ids = {c["chunk_id"] for c in data["citations"]}
     assert "refund-policy::c0000" in cited_ids
+    assert "trace_id" in data["retrieval_debug"]
+    assert "timings_ms" in data["retrieval_debug"]

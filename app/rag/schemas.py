@@ -12,6 +12,8 @@ class Citation(BaseModel):
 class AskRagRequest(BaseModel):
     question: str = Field(min_length = 1, max_length = 2000)
     top_k: int = Field(default = 5, ge = 1, le = 10)
+    category: Optional[str] = None
+    applies_to: Optional[str] = None
 
 class AskRagResponse(BaseModel):
     question: str
