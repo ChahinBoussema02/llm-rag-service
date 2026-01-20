@@ -1,13 +1,12 @@
 # LLM RAG Service (Local Ollama + Chroma) ✅
 
-A small **FastAPI** service that demonstrates a **production-style RAG (Retrieval-Augmented Generation)** pipeline using:
+A **portfolio-ready FastAPI RAG service** that demonstrates a **production-style Retrieval-Augmented Generation (RAG)** pipeline using:
 
 - **Local LLM via Ollama** (default: `gemma3:12b`)
 - **ChromaDB** for vector search
 - **SentenceTransformers** embeddings
+- **Hybrid retrieval + reranking**
 - **Strict citations + evaluation** to reduce hallucinations
-
-This project is designed as a **portfolio-ready** example of applied LLM engineering.
 
 ---
 
@@ -50,7 +49,7 @@ Example response:
 1. **Ingest docs** (`.md` with metadata frontmatter)
 2. **Chunk docs** into `chunks.jsonl`
 3. **Embed + index** into **ChromaDB**
-4. **Retrieve** top-k chunks (vector similarity + reranking)
+4. **Retrieve** top-k chunks (**hybrid search + reranking**)
 5. **Generate answer** with **Gemma 3 12B** (Ollama)
 6. Return **final answer + citations**
 
@@ -63,8 +62,11 @@ Example response:
 - **Gemma 3 12B** (`gemma3:12b`)
 - **ChromaDB** (vector DB)
 - **SentenceTransformers** (embeddings)
+- **Rank-BM25** (keyword retrieval)
 - **Pytest** (tests)
 - **Eval harness** (`eval/run_eval.py`)
+- **Docker + docker-compose**
+- **GitHub Actions CI**
 
 ---
 
@@ -77,7 +79,7 @@ llm-rag-service/
     rag/
       ingest.py              # parse + chunk docs
       index.py               # build Chroma index
-      retrieve.py            # Retriever class (semantic + keyword rerank)
+      retrieve.py            # Retriever (hybrid retrieval + reranking)
       embed.py               # SentenceTransformer embedder
       generate.py            # Ollama generation (strict JSON output)
       schemas.py             # Pydantic request/response models
@@ -88,16 +90,22 @@ llm-rag-service/
   tests/
     test_golden_rag.py       # golden API tests
     test_retrieve.py         # retrieval quality test
+    test_routing.py          # routing + filtering tests
   eval/
     dataset.jsonl            # evaluation dataset
     run_eval.py              # runs eval + metrics
+  .github/workflows/
+    ci.yml                   # GitHub Actions CI
+  Dockerfile
+  docker-compose.yml
+  Makefile
   requirements.txt
   README.md
 ```
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Quickstart (Local)
 
 ### 1) Create a virtual environment
 
@@ -205,7 +213,9 @@ curl -s http://127.0.0.1:8000/health | jq
 ## ❓ Query the RAG endpoint
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:8000/rag/ask"   -H "Content-Type: application/json"   -d '{
+curl -sS -X POST "http://127.0.0.1:8000/rag/ask" \
+  -H "Content-Type: application/json" \
+  -d '{
     "question": "How long do Pro users have to request a refund?",
     "top_k": 5
   }' | jq
@@ -221,7 +231,7 @@ Run all tests:
 pytest -q
 ```
 
-Run only integration retrieval tests:
+Run integration-only tests:
 
 ```bash
 pytest -q -m integration
@@ -273,23 +283,63 @@ This service includes several simple but effective safety techniques:
 - **Strict JSON generation**: model must output only valid JSON
 - **Citations required** for non-IDK answers
 - **IDK answers return no citations** (prevents fake grounding)
-- Retrieval reranking combines:
-  - vector similarity
-  - keyword overlap boost
+- Hybrid retrieval combines:
+  - vector similarity search
+  - BM25 keyword search
+  - keyword overlap boosting
+  - fused scoring + reranking
 
 ---
 
-## 🐳 Docker
+## 🐳 Docker (Recommended)
 
-If you add Docker support, the intended flow is:
+### Start everything (API + Ollama)
 
 ```bash
 docker compose up --build
 ```
+
 The API will run on:
+
 - http://127.0.0.1:8000
-And Ollama will run on:
+
+Ollama will run on:
+
 - http://127.0.0.1:11434
+
+### First-time model pull (Gemma 3 12B)
+
+The first time you run Docker, Ollama may not have the model yet. Run:
+
+```bash
+docker compose up -d ollama
+docker exec -it $(docker compose ps -q ollama) ollama pull gemma3:12b
+docker compose up --build rag-api
+```
+
+---
+
+## 🧰 Makefile (Convenience Commands)
+
+If you have the `Makefile`, you can run:
+
+```bash
+make install
+make ingest
+make index
+make run
+make test
+make eval
+```
+
+---
+
+## ✅ GitHub Actions CI
+
+This repo includes a basic CI workflow that runs tests on every push/PR:
+
+- `.github/workflows/ci.yml`
+
 ---
 
 ## ⚠️ Known Limitations
@@ -298,8 +348,8 @@ This is a portfolio prototype, not a full production system:
 
 - No auth / rate limiting
 - No streaming responses
-- No caching layer
 - Small demo document set (AcmeAI policies)
+- Chroma index stored locally on disk
 
 ---
 
@@ -307,11 +357,9 @@ This is a portfolio prototype, not a full production system:
 
 Possible upgrades to make this more production-ready:
 
-- add metadata filtering (e.g. category=billing)
-- add hybrid search (BM25 + vectors)
-- add async / streaming generation
-- add Docker support
-- add GitHub Actions CI
-- improve eval metrics (citation precision, max citations)
-
----
+- add streaming generation
+- add caching for retrieval + embeddings
+- expand eval dataset (20–50 questions)
+- add citation precision metrics (avoid unnecessary citations)
+- add reranking improvements (MMR, cross-encoder reranker)
+- add auth + rate limiting
