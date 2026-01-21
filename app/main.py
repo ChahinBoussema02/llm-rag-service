@@ -4,6 +4,7 @@ load_dotenv()
 import time
 import uuid
 import logging
+import re
 
 from pathlib import Path
 from fastapi import FastAPI
@@ -27,11 +28,28 @@ CHROMA_DIR = Path("data/index/chroma")
 # Create retriever once (keeps app fast)
 retriever = Retriever(CHROMA_DIR)
 
+_STOPWORDS = {
+    "the","a","an","and","or","to","for","of","in","on","with","is","are","do","does",
+    "how","what","when","where","why","can","i","we","you","your","our","it","this","that"
+}
 
 @app.get("/health")
 def health():
     return {"ok": True}
 
+def _keywords(text: str) -> set[str]:
+    toks = re.findall(r"[a-z0-9]+", (text or "").lower())
+    # keep meaningful tokens only
+    return {t for t in toks if len(t) >= 4 and t not in _STOPWORDS}
+
+def _evidence_mentions_question(question: str, results: List[Dict[str, Any]]) -> bool:
+    qk = _keywords(question)
+    if not qk:
+        return True  # nothing to check
+
+    # Check the top evidence (top 3 is enough)
+    evidence_text = " ".join((r.get("text") or "") for r in results[:3]).lower()
+    return any(k in evidence_text for k in qk)
 
 def _is_idk(text: str) -> bool:
     t = (text or "").strip().lower()
@@ -123,6 +141,7 @@ def ask_rag(req: AskRagRequest):
     top_score = results[0]["score"] if results else 0.0
 
     # Evidence sufficiency gate (prevents hallucinations)
+    # Evidence sufficiency gate (prevents hallucinations)
     if not results or top_score < 0.45:
         return AskRagResponse(
             question=req.question,
@@ -132,6 +151,20 @@ def ask_rag(req: AskRagRequest):
                 "top_k": req.top_k,
                 "results": results,
                 "reason": "low_retrieval_confidence",
+                "top_score": top_score,
+            },
+        )
+    
+     # NEW: topic-match gate (prevents answering unrelated policy text)
+    if not _evidence_mentions_question(req.question, results):
+        return AskRagResponse(
+            question=req.question,
+            final_answer="I don't know based on the provided documents.",
+            citations=[],
+            retrieval_debug={
+                "top_k": req.top_k,
+                "results": results,
+                "reason": "topic_mismatch",
                 "top_score": top_score,
             },
         )
