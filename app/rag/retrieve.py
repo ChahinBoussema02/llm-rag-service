@@ -72,12 +72,19 @@ class Retriever:
         
     def _bm25_search(self, query: str, top_k: int) -> List[Dict[str, Any]]:
         docs = self._load_all_docs()
+        if not docs:
+            return []
 
-        tokenized_corpus = [self._tokenize(d["text"]) for d in docs]
+        tokenized_corpus = [self._tokenize(d.get("text", "")) for d in docs]
+        if not any(tokenized_corpus):
+            return []
+
+        q_tokens = self._tokenize(query)
+        if not q_tokens:
+            return []
+
         bm25 = BM25Okapi(tokenized_corpus)
-
-        scores = bm25.get_scores(self._tokenize(query))
-        # top indices
+        scores = bm25.get_scores(q_tokens)
         ranked = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
 
         out = []
