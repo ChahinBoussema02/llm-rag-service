@@ -1,24 +1,33 @@
 from dotenv import load_dotenv
+from fastapi.responses import FileResponse
 load_dotenv()
 
 import time
 import uuid
 import logging
 import re
+import json
 
 from pathlib import Path
 from fastapi import FastAPI
 from typing import Optional, List, Dict, Any
+from sse_starlette.sse import EventSourceResponse
+from fastapi.staticfiles import StaticFiles
+
+
 
 from app.rag.schemas import AskRagRequest, AskRagResponse, Citation
 from app.rag.generate import generate_answer
 from app.rag.retrieve import Retriever
+from app.rag.generate_stream import stream_answer_text
 
 from cachetools import TTLCache
 
 retrieval_cache = TTLCache(maxsize=512, ttl=300)  # 5 minutes
 
 app = FastAPI(title="LLM RAG Service")
+
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 logger = logging.getLogger("rag")
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +45,10 @@ _STOPWORDS = {
 @app.get("/health")
 def health():
     return {"ok": True}
+
+@app.get("/")
+def index():
+    return FileResponse("static/index.html")
 
 def _keywords(text: str) -> set[str]:
     toks = re.findall(r"[a-z0-9]+", (text or "").lower())
@@ -251,3 +264,57 @@ def ask_rag(req: AskRagRequest):
             "timings_ms": {"retrieve": retrieve_ms, "generate": gen_ms, "total": total_ms},
         },
     )
+
+@app.post("/rag/ask/stream")
+async def ask_rag_stream(req: AskRagRequest):
+    results = retriever.search(req.question, top_k=req.top_k)
+
+    effective_category = req.category or infer_category(req.question)
+    results = filter_results(results, effective_category, req.applies_to)
+
+    top_score = results[0]["score"] if results else 0.0
+    if not results or top_score < 0.45:
+        async def _idk():
+            yield {"event": "meta", "data": json.dumps({"reason": "low_retrieval_confidence", "top_score": top_score})}
+            yield {"event": "token", "data": "I don't know based on the provided documents."}
+            yield {"event": "done", "data": "true"}
+        return EventSourceResponse(_idk())
+
+    # Select citations early (same logic you already use)
+    top1 = results[0]
+    selected = [top1]
+    if len(results) > 1:
+        top2 = results[1]
+        same_doc = top2["metadata"].get("doc_id") == top1["metadata"].get("doc_id")
+        same_category = top2["metadata"].get("category") == top1["metadata"].get("category")
+        if same_doc or same_category:
+            selected.append(top2)
+
+    citations = [
+        {
+            "chunk_id": r["chunk_id"],
+            "doc_id": r["metadata"]["doc_id"],
+            "section_path": r["metadata"]["section_path"],
+            "score": r["score"],
+            "snippet": r["text"][:220],
+        }
+        for r in selected
+    ]
+
+    async def event_gen():
+        # Send metadata first (so UI can show citations immediately)
+        yield {"event": "meta", "data": json.dumps({
+            "question": req.question,
+            "top_score": top_score,
+            "category": effective_category,
+            "applies_to": req.applies_to,
+            "citations": citations,
+        })}
+
+        # Stream tokens
+        async for tok in stream_answer_text(req.question, results):
+            yield {"event": "token", "data": tok}
+
+        yield {"event": "done", "data": "true"}
+
+    return EventSourceResponse(event_gen())
