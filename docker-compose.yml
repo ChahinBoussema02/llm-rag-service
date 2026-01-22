@@ -1,7 +1,4 @@
 services:
-  # -------------------------
-  # Optional Ollama in Docker
-  # -------------------------
   ollama:
     image: ollama/ollama:latest
     profiles: ["ollama"]
@@ -9,37 +6,26 @@ services:
       - "11434:11434"
     volumes:
       - ollama:/root/.ollama
-    # NOTE: On Docker Desktop (Mac/Win), RAM is limited by Docker settings.
-    # Large models (like gemma3:12b) may fail if Docker only has ~4-6GB.
 
-  # -------------------------
-  # RAG API
-  # -------------------------
   rag-api:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      # Default to host Ollama (works great on Mac):
-      # If you run Ollama locally: OLLAMA_HOST=http://host.docker.internal:11434
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
-      # Safer default in Docker. You can override in .env:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:12b}
       - OLLAMA_TIMEOUT_SECONDS=${OLLAMA_TIMEOUT_SECONDS:-180}
     volumes:
       - ./data:/app/data
       - ./static:/app/static
-    # If you want to use Docker Ollama instead:
-    # docker compose --profile ollama up --build
-    depends_on:
-      - ollama
 
-  # -------------------------
-  # One-shot index builder
-  # -------------------------
   indexer:
     build: .
     profiles: ["tools"]
+    env_file:
+      - .env
     environment:
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:12b}

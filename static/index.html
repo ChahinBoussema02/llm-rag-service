@@ -11,6 +11,9 @@
     .card { border: 1px solid #eee; padding: 12px; border-radius: 10px; margin-top: 12px; }
     .muted { color: #666; }
     .err { color: #b00020; }
+    input[type="password"], input[type="text"], input[type="number"] { padding: 6px 8px; }
+    .grow { flex: 1; min-width: 220px; }
+    code { background: #f6f6f6; padding: 2px 5px; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -18,8 +21,21 @@
   <p class="muted">Streams tokens from <code>/rag/ask/stream</code> (SSE over fetch).</p>
 
   <div class="card">
+    <div class="row" style="margin-bottom:10px;">
+      <label class="grow">
+        API key
+        <input id="apiKey" type="password" placeholder="Paste once (saved locally)" style="width:100%;" />
+      </label>
+      <label>
+        <input id="showKey" type="checkbox" />
+        show
+      </label>
+      <button id="clearKey">Clear</button>
+    </div>
+
     <label>Question</label>
     <textarea id="q">How long do Pro users have to request a refund?</textarea>
+
     <div class="row">
       <label>top_k <input id="topk" type="number" value="5" min="1" max="10" /></label>
       <label>category <input id="cat" placeholder="billing (optional)"/></label>
@@ -43,6 +59,11 @@
 <script>
 let aborter = null;
 
+const KEY_STORAGE = "RAG_API_KEY";
+const apiKeyInput = document.getElementById("apiKey");
+const showKey = document.getElementById("showKey");
+const clearKeyBtn = document.getElementById("clearKey");
+
 function stopStream() {
   if (aborter) {
     aborter.abort();
@@ -53,8 +74,24 @@ function stopStream() {
 
 document.getElementById("stop").onclick = stopStream;
 
+// ---- API key persistence ----
+apiKeyInput.value = localStorage.getItem(KEY_STORAGE) || "";
+
+apiKeyInput.addEventListener("input", () => {
+  localStorage.setItem(KEY_STORAGE, apiKeyInput.value.trim());
+});
+
+showKey.addEventListener("change", () => {
+  apiKeyInput.type = showKey.checked ? "text" : "password";
+});
+
+clearKeyBtn.addEventListener("click", () => {
+  localStorage.removeItem(KEY_STORAGE);
+  apiKeyInput.value = "";
+});
+
+// ---- SSE parsing helpers ----
 function parseSseFrames(buf) {
-  // Normalize CRLF and split frames by blank line.
   const normalized = buf.replace(/\r\n/g, "\n");
   const parts = normalized.split("\n\n");
   const rest = parts.pop() || "";
@@ -62,12 +99,6 @@ function parseSseFrames(buf) {
 }
 
 function parseFrame(frame) {
-  // SSE frame:
-  // event: token
-  // data: hello
-  // data: world
-  //
-  // -> data is "hello\nworld"
   const lines = frame.split("\n").filter(Boolean);
   let eventName = "message";
   const dataLines = [];
@@ -76,14 +107,11 @@ function parseFrame(frame) {
     if (ln.startsWith("event:")) {
       eventName = ln.slice(6).trim();
     } else if (ln.startsWith("data:")) {
-      // IMPORTANT: preserve whitespace after "data:".
-      // Spec allows an optional single leading space; remove just one if present.
       let d = ln.slice(5);
       if (d.startsWith(" ")) d = d.slice(1);
       dataLines.push(d);
     }
   }
-
   return { eventName, data: dataLines.join("\n") };
 }
 
@@ -106,6 +134,13 @@ document.getElementById("go").onclick = async () => {
     applies_to: document.getElementById("plan").value || null
   };
 
+  const apiKey = (apiKeyInput.value || "").trim();
+  if (!apiKey) {
+    status.textContent = "Missing API key. Paste it above (saved locally).";
+    status.className = "err";
+    return;
+  }
+
   aborter = new AbortController();
 
   let resp;
@@ -115,7 +150,8 @@ document.getElementById("go").onclick = async () => {
       headers: {
         "Content-Type": "application/json",
         "Accept": "text/event-stream",
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-cache",
+        "X-API-Key": apiKey
       },
       body: JSON.stringify(payload),
       signal: aborter.signal
@@ -128,6 +164,12 @@ document.getElementById("go").onclick = async () => {
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
+    if (resp.status === 401) {
+      status.textContent = "401 Unauthorized — API key missing or incorrect.";
+      status.className = "err";
+      out.textContent = text || "Unauthorized.";
+      return;
+    }
     status.textContent = `HTTP ${resp.status} ${resp.statusText}`;
     status.className = "err";
     out.textContent = text || "No response body.";
@@ -165,12 +207,10 @@ document.getElementById("go").onclick = async () => {
             const m = JSON.parse(data);
             cites.textContent = JSON.stringify(m.citations || [], null, 2);
           } catch (e) {
-            // show raw meta if JSON parse fails
             cites.textContent = data;
           }
         } else if (eventName === "token") {
-          // IMPORTANT: do not trim — preserve spaces/newlines
-          out.textContent += data;
+          out.textContent += data; // preserve whitespace
         } else if (eventName === "done") {
           status.textContent = "Done.";
           stopStream();
@@ -181,10 +221,7 @@ document.getElementById("go").onclick = async () => {
 
     status.textContent = "Stream closed.";
   } catch (e) {
-    if (aborter === null) {
-      // stopped intentionally
-      return;
-    }
+    if (aborter === null) return; // stopped intentionally
     status.textContent = "Stream error.";
     status.className = "err";
   } finally {

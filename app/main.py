@@ -7,11 +7,14 @@ import uuid
 import logging
 import re
 import json
+import os
+import secrets
 
 from pathlib import Path
 from fastapi import FastAPI
 from typing import Optional, List, Dict, Any
 from sse_starlette.sse import EventSourceResponse
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.staticfiles import StaticFiles
 
 
@@ -32,6 +35,7 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 logger = logging.getLogger("rag")
 logging.basicConfig(level=logging.INFO)
 
+
 CHROMA_DIR = Path("data/index/chroma")
 
 # Create retriever once (keeps app fast)
@@ -41,6 +45,37 @@ _STOPWORDS = {
     "the","a","an","and","or","to","for","of","in","on","with","is","are","do","does",
     "how","what","when","where","why","can","i","we","you","your","our","it","this","that"
 }
+
+API_KEY = os.getenv("API_KEY", "").strip()
+
+def require_api_key(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    authorization: str | None = Header(default=None),
+) -> None:
+    """
+    Accept either:
+      - X-API-Key: <key>
+      - Authorization: Bearer <key>
+    If API_KEY is not set, auth is disabled (local/dev-friendly).
+    """
+    if not API_KEY:
+        return  # auth disabled
+
+    token = None
+
+    if x_api_key:
+        token = x_api_key.strip()
+
+    if not token and authorization:
+        auth = authorization.strip()
+        if auth.lower().startswith("bearer "):
+            token = auth[7:].strip()
+
+    if not token or not secrets.compare_digest(token, API_KEY):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unauthorized",
+        )
 
 @app.get("/health")
 def health():
@@ -142,7 +177,7 @@ def _extract_answer_from_chunk(chunk_text: str, max_chars: int = 220) -> str:
     # Otherwise first line
     return lines[0][:max_chars].strip()
 
-@app.post("/rag/ask", response_model=AskRagResponse)
+@app.post("/rag/ask", response_model=AskRagResponse, dependencies=[Depends(require_api_key)])
 def ask_rag(req: AskRagRequest):
     t0 = time.perf_counter()
     trace_id = str(uuid.uuid4())
@@ -265,7 +300,7 @@ def ask_rag(req: AskRagRequest):
         },
     )
 
-@app.post("/rag/ask/stream")
+@app.post("/rag/ask/stream", dependencies=[Depends(require_api_key)])
 async def ask_rag_stream(req: AskRagRequest):
     results = retriever.search(req.question, top_k=req.top_k)
 
