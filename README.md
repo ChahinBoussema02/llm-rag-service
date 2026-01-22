@@ -5,8 +5,9 @@ A **portfolio-ready FastAPI RAG service** that demonstrates a **production-style
 - **Local LLM via Ollama** (default: `gemma3:12b`)
 - **ChromaDB** for vector search
 - **SentenceTransformers** embeddings
-- **Hybrid retrieval + reranking**
+- **Hybrid retrieval + reranking** (Vector + BM25)
 - **Strict citations + evaluation** to reduce hallucinations
+- **Streaming UI (SSE)** for real-time answers
 
 ---
 
@@ -63,6 +64,7 @@ Example response:
 - **ChromaDB** (vector DB)
 - **SentenceTransformers** (embeddings)
 - **Rank-BM25** (keyword retrieval)
+- **SSE Streaming** (`sse-starlette`)
 - **Pytest** (tests)
 - **Eval harness** (`eval/run_eval.py`)
 - **Docker + docker-compose**
@@ -75,14 +77,17 @@ Example response:
 ```bash
 llm-rag-service/
   app/
-    main.py                  # FastAPI app
+    main.py                  # FastAPI app + endpoints
     rag/
       ingest.py              # parse + chunk docs
       index.py               # build Chroma index
       retrieve.py            # Retriever (hybrid retrieval + reranking)
       embed.py               # SentenceTransformer embedder
       generate.py            # Ollama generation (strict JSON output)
+      generate_stream.py     # Ollama streaming helper
       schemas.py             # Pydantic request/response models
+  static/
+    index.html               # streaming UI demo
   data/
     raw/company_docs/        # input markdown docs (source KB)
     processed/chunks.jsonl   # chunked docs (output of ingest)
@@ -223,6 +228,30 @@ curl -sS -X POST "http://127.0.0.1:8000/rag/ask" \
 
 ---
 
+## 🌊 Streaming Endpoint (SSE)
+
+This project includes a streaming endpoint:
+
+- `POST /rag/ask/stream`
+
+It streams tokens as Server-Sent Events (SSE), which is useful for building real-time UIs.
+
+---
+
+## 🖥️ Streaming UI Demo
+
+A simple UI is included at:
+
+- `static/index.html`
+
+Once the server is running, open:
+
+- http://127.0.0.1:8000
+
+You can ask a question and see the answer stream live.
+
+---
+
 ## 🧪 Tests
 
 Run all tests:
@@ -280,7 +309,8 @@ eval/results.json
 This service includes several simple but effective safety techniques:
 
 - **Evidence gate**: if retrieval score is too low → return “I don’t know…”
-- **Strict JSON generation**: model must output only valid JSON
+- **Topic-match gate**: avoids answering unrelated chunks
+- **Strict JSON generation**: model must output valid JSON only
 - **Citations required** for non-IDK answers
 - **IDK answers return no citations** (prevents fake grounding)
 - Hybrid retrieval combines:
@@ -307,15 +337,35 @@ Ollama will run on:
 
 - http://127.0.0.1:11434
 
+---
+
 ### First-time model pull (Gemma 3 12B)
 
-The first time you run Docker, Ollama may not have the model yet. Run:
+If the model is not downloaded yet inside Docker:
 
 ```bash
 docker compose up -d ollama
 docker exec -it $(docker compose ps -q ollama) ollama pull gemma3:12b
 docker compose up --build rag-api
 ```
+
+---
+
+### ⚠️ Memory note (important)
+
+`gemma3:12b` requires **a lot of RAM**.
+
+If Docker returns something like:
+
+```
+model requires more system memory (...) than is available (...)
+```
+
+You can fix it by:
+
+- allocating more RAM to Docker Desktop (recommended)
+- using a smaller model (example: `gemma2:2b`, `llama3.2:3b`)
+- running Ollama locally instead of inside Docker
 
 ---
 
@@ -336,7 +386,7 @@ make eval
 
 ## ✅ GitHub Actions CI
 
-This repo includes a basic CI workflow that runs tests on every push/PR:
+This repo includes a CI workflow that runs tests on every push/PR:
 
 - `.github/workflows/ci.yml`
 
@@ -347,7 +397,6 @@ This repo includes a basic CI workflow that runs tests on every push/PR:
 This is a portfolio prototype, not a full production system:
 
 - No auth / rate limiting
-- No streaming responses
 - Small demo document set (AcmeAI policies)
 - Chroma index stored locally on disk
 
@@ -357,9 +406,9 @@ This is a portfolio prototype, not a full production system:
 
 Possible upgrades to make this more production-ready:
 
-- add streaming generation
-- add caching for retrieval + embeddings
+- add better reranking (MMR or cross-encoder reranker)
+- add caching for embeddings + retrieval
 - expand eval dataset (20–50 questions)
 - add citation precision metrics (avoid unnecessary citations)
-- add reranking improvements (MMR, cross-encoder reranker)
 - add auth + rate limiting
+- deploy to a cloud service (Render/Fly.io/Railway)
