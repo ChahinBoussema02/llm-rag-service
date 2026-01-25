@@ -218,9 +218,7 @@ curl -s http://127.0.0.1:8000/health | jq
 ## ❓ Query the RAG endpoint
 
 ```bash
-curl -sS -X POST "http://127.0.0.1:8000/rag/ask" \
-  -H "Content-Type: application/json" \
-  -d '{
+curl -sS -X POST "http://127.0.0.1:8000/rag/ask"   -H "Content-Type: application/json"   -d '{
     "question": "How long do Pro users have to request a refund?",
     "top_k": 5
   }' | jq
@@ -249,6 +247,33 @@ Once the server is running, open:
 - http://127.0.0.1:8000
 
 You can ask a question and see the answer stream live.
+
+---
+## 📸 Demo
+
+### Streaming UI
+![Streaming UI](assets/ui.png)
+
+### API Docs
+![Swagger Docs](assets/docs.png)
+
+---
+
+## 🧪 Example Questions to Try
+
+### Should return an answer (grounded + cited)
+- How long is the refund window for Pro users?
+- How do I request a refund?
+- What information do I need to include in a refund request email?
+- Can refund requests be denied? When?
+- How long do you retain user data?
+- Can I request deletion of my data?
+- What happens if I abuse the service or spam requests?
+
+### Should return “I don’t know…”
+- Do you offer student discounts?
+- Do you have a mobile app?
+- Can I pay with crypto?
 
 ---
 
